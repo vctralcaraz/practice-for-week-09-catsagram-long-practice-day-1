@@ -1,5 +1,5 @@
 // Your code here
-let popScore = 0;
+let state = {}
 
 window.onload = () => {
 
@@ -21,7 +21,7 @@ window.onload = () => {
     newButton.value = 'new pic';
 
     scoreDiv.setAttribute('id', 'score-div');
-    scoreSpan.innerHTML = `Popularity Score: <span id='popular-score'>${popScore}</span>`;
+    scoreSpan.innerHTML = `Popularity Score: <span id='popular-score'>${state.popScore}</span>`;
 
     upVoteButton.textContent = 'Upvote';
     upVoteButton.value = 'upvote';
@@ -39,7 +39,6 @@ window.onload = () => {
 
     h1.innerHTML = 'Catstagram';
     img.setAttribute('id', 'cat-pic');
-    addToImg(img);
 
     appendBody(h1);
     appendBody(buttonDiv);
@@ -59,9 +58,17 @@ window.onload = () => {
     listener(upVoteButton, 'click', handleButtonClick);
     listener(downVoteButton, 'click', handleButtonClick);
     listener(commentSubmitButton, 'click', handleButtonClick);
+
+    retrieveFromLocalStorage();
+    if(state.pic === "") {
+        addToImg(img);
+    }
+
+    saveToLocalStorage();
 }
 
 const getRandomCatPicture = async () => {
+    // console.log(state)
     const apiUrl = 'https://api.thecatapi.com/v1/images/search?size=small';
 
     const apiResponse = await fetch(apiUrl);
@@ -73,10 +80,14 @@ const getRandomCatPicture = async () => {
 
 const addToImg = img => {
     getRandomCatPicture().then(data => {
-        img.setAttribute('src', data[0].url);
+        state.pic = data[0].url;
+        img.setAttribute('src', state.pic);
+        saveToLocalStorage();
     }).catch(error => {
         console.log(error)
-        img.setAttribute('src', 'https://placehold.co/600x400/png');
+        state.pic = 'https://placehold.co/600x400/png';
+        img.setAttribute('src', state.pic);
+        saveToLocalStorage();
     });
 }
 
@@ -102,22 +113,26 @@ const handleButtonClick = e => {
         addToImg(img);
         resetData();
     } else if(value === 'upvote') {
-        popScore += 1;
+        state.popScore += 1;
     } else if(value === 'downvote') {
-        popScore -= 1;
+        state.popScore -= 1;
     } else if(value === 'comment-submit') {
+
         const commentInput = document.getElementById('comment-input');
+        const newComment = `${new Date().toLocaleString()} - ${commentInput.value}`;
+        state.comments.push(newComment);
 
         const commentSection = document.getElementById('comment-section');
-        const newComment = document.createElement('p');
-
-        newComment.innerText = `${new Date().toLocaleString()} - ${commentInput.value}`
-        appendAny(commentSection, newComment);
+        let commentP = document.createElement('p');
+        commentP.innerText = newComment;
+        appendAny(commentSection, commentP);
 
         commentInput.value = '';
+        saveToLocalStorage();
     }
 
-    reRenderById('popular-score', popScore);
+    reRenderById('popular-score', state.popScore);
+    saveToLocalStorage();
 }
 
 const reRenderById = (id, data) => {
@@ -127,12 +142,54 @@ const reRenderById = (id, data) => {
 }
 
 const resetData = () => {
-    popScore = 0;
-    reRenderById('popular-score', popScore);
+    state.popScore = 0;
+    reRenderById('popular-score', state.popScore);
+
+    const img = document.getElementById('cat-pic');
+    addToImg(img);
+
+    state.comments.length = 0;
 
     const commentInput = document.getElementById('comment-input');
     const commentSection = document.getElementById('comment-section');
 
     commentInput.value = '';
     commentSection.innerHTML = '';
+    saveToLocalStorage();
+}
+
+const saveToLocalStorage = () => {
+    localStorage.setItem('myData', JSON.stringify(state));
+}
+
+const retrieveFromLocalStorage = () => {
+    const myData = JSON.parse(localStorage.getItem('myData'));
+    const img = document.getElementById('cat-pic');
+
+    if(myData === null) {
+        state = {
+            popScore: 0,
+            pic: '',
+            comments: []
+        }
+    } else {
+        state = myData;
+    }
+    reRenderById('popular-score', state.popScore);
+    if(state.pic !== '') {
+        img.setAttribute('src', state.pic);
+    }
+    if(state.comments.length > 0) {
+        retrieveComments();
+    }
+}
+
+const retrieveComments = () => {
+    const commentSection = document.getElementById('comment-section');
+
+    state.comments.forEach(comment => {
+        let newComment = document.createElement('p');
+        newComment.innerText = comment;
+        appendAny(commentSection, newComment);
+    });
 }
